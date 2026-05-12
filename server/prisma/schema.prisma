@@ -55,11 +55,13 @@ model AppUser {
   role     String
   joinedAt String
   status   String
+  reviews  Review[]
 }
 
 model Review {
   id       String   @id
   userId   String
+  user     AppUser  @relation(fields: [userId], references: [id])
   userName String
   type     String
   content  String

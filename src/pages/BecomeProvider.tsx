@@ -6,14 +6,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Hexagon } from "lucide-react";
 import { Provider } from "@/lib/mock-data";
-import { useQuery } from "@tanstack/react-query";
-import { fetchCategories } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchCategories, createProvider } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const BecomeProvider = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories });
+  
+  const createProviderMut = useMutation({
+    mutationFn: createProvider,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+    }
+  });
   
   const [formData, setFormData] = useState({
     name: "",
@@ -35,7 +43,7 @@ const BecomeProvider = () => {
     setFormData(prev => ({ ...prev, categoryId: val }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.categoryId) {
@@ -45,7 +53,7 @@ const BecomeProvider = () => {
 
     const categoryObj = categories.find(c => c.id === formData.categoryId);
 
-    const newProvider: Provider = {
+    const newProvider = {
       id: `custom_${Date.now()}`,
       name: formData.name,
       category: categoryObj?.name || "Unknown",
@@ -63,20 +71,17 @@ const BecomeProvider = () => {
       phone: formData.phone
     };
 
-    // Save to localStorage
-    const existingStr = localStorage.getItem("allProviders");
-    const existingProviders = existingStr ? JSON.parse(existingStr) : categories; // Actually should use providers. Wait, we don't import providers here yet!
-    // I need to be careful. I will import `providers` at the top. Wait! Let me just use empty array if not found, since Browse initializes it.
-    const existingArray = existingStr ? JSON.parse(existingStr) : [];
-    const updatedProviders = [newProvider, ...existingArray];
-    localStorage.setItem("allProviders", JSON.stringify(updatedProviders));
-
-    toast({ title: "Success", description: "You are now registered as a service provider!" });
-    
-    // Redirect to browse page
-    setTimeout(() => {
-      navigate("/browse");
-    }, 1000);
+    try {
+      await createProviderMut.mutateAsync(newProvider);
+      toast({ title: "Success", description: "You are now registered as a service provider in backend!" });
+      
+      // Redirect to browse page
+      setTimeout(() => {
+        navigate("/browse");
+      }, 1000);
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to register provider.", variant: "destructive" });
+    }
   };
 
   return (

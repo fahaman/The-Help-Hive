@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Provider, AppUser } from "@/lib/mock-data";
-import { useQuery } from "@tanstack/react-query";
-import { fetchProviders, fetchUsers, fetchReviews } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchProviders, fetchUsers, fetchReviews, deleteProvider, deleteUser, updateProvider } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Trash2, Save, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Admin = () => {
+  const queryClient = useQueryClient();
   const { data: fetchedProviders } = useQuery({ queryKey: ['providers'], queryFn: fetchProviders });
   const { data: fetchedUsers } = useQuery({ queryKey: ['users'], queryFn: fetchUsers });
   const { data: fetchedReviews = [] } = useQuery({ queryKey: ['reviews'], queryFn: fetchReviews });
@@ -17,6 +18,10 @@ const Admin = () => {
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   const { toast } = useToast();
+
+  const deleteProviderMut = useMutation({ mutationFn: deleteProvider, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers'] }) });
+  const deleteUserMut = useMutation({ mutationFn: deleteUser, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }) });
+  const updateProviderMut = useMutation({ mutationFn: ({ id, data }: { id: string, data: Partial<Provider> }) => updateProvider(id, data), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers'] }) });
 
   useEffect(() => {
     if (fetchedProviders && allProviders.length === 0) setAllProviders(fetchedProviders);
@@ -37,23 +42,30 @@ const Admin = () => {
     setAllProviders(prev => prev.map(p => p.id === id ? { ...p, hourlyRate: Number(newRate) } : p));
   };
 
-  const handleSaveProviders = () => {
-    localStorage.setItem("allProviders", JSON.stringify(allProviders));
-    toast({ title: "Saved", description: "Providers have been successfully updated." });
+  const handleSaveProviders = async () => {
+    if (!fetchedProviders) return;
+    const promises = allProviders.map(p => {
+      const original = fetchedProviders.find(op => op.id === p.id);
+      if (original && original.hourlyRate !== p.hourlyRate) {
+        return updateProviderMut.mutateAsync({ id: p.id, data: { hourlyRate: p.hourlyRate } });
+      }
+      return Promise.resolve();
+    });
+    
+    await Promise.all(promises);
+    toast({ title: "Saved", description: "Providers have been successfully updated in backend." });
   };
 
-  const handleDeleteProvider = (id: string) => {
-    const updated = allProviders.filter(p => p.id !== id);
-    setAllProviders(updated);
-    localStorage.setItem("allProviders", JSON.stringify(updated));
-    toast({ title: "Deleted", description: "Provider has been removed.", variant: "destructive" });
+  const handleDeleteProvider = async (id: string) => {
+    await deleteProviderMut.mutateAsync(id);
+    setAllProviders(prev => prev.filter(p => p.id !== id));
+    toast({ title: "Deleted", description: "Provider has been removed from backend.", variant: "destructive" });
   };
 
-  const handleDeleteUser = (id: string) => {
-    const updated = allUsers.filter(u => u.id !== id);
-    setAllUsers(updated);
-    localStorage.setItem("allUsers", JSON.stringify(updated));
-    toast({ title: "Deleted", description: "User account has been removed.", variant: "destructive" });
+  const handleDeleteUser = async (id: string) => {
+    await deleteUserMut.mutateAsync(id);
+    setAllUsers(prev => prev.filter(u => u.id !== id));
+    toast({ title: "Deleted", description: "User account has been removed from backend.", variant: "destructive" });
   };
 
   return (

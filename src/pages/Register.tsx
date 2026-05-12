@@ -8,12 +8,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Hexagon, CheckCircle, XCircle } from "lucide-react";
 import { sampleUsers, providers as defaultProviders } from "@/lib/mock-data";
-import { useQuery } from "@tanstack/react-query";
-import { fetchCategories } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchCategories, createUser, createProvider } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
+  const queryClient = useQueryClient();
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories });
+  
+  const createUserMut = useMutation({ mutationFn: createUser, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }) });
   const [role, setRole] = useState("user");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -108,7 +111,7 @@ const Register = () => {
     setIsVerifying(true);
 
     // Verify against generated OTP
-    setTimeout(() => {
+    setTimeout(async () => {
       if (otp === generatedOtp) {
         // Save user data
         localStorage.setItem("userRole", role);
@@ -117,51 +120,35 @@ const Register = () => {
         localStorage.setItem("userPhone", `${countryCode} ${phoneNumber}`);
         localStorage.setItem("joinedAt", new Date().toISOString().split('T')[0]);
 
-        // Add to Admin Panel users list if registering as a standard user
-        if (role === "user") {
-          const storedUsers = localStorage.getItem("allUsers");
-          const usersList = storedUsers ? JSON.parse(storedUsers) : sampleUsers;
-          usersList.unshift({
+        try {
+          // Both users and providers need an AppUser account to login
+          await createUserMut.mutateAsync({
             id: `u${Date.now()}`,
             name: name,
             email: email,
-            role: "user",
+            role: role,
             joinedAt: new Date().toISOString().split('T')[0],
             status: "active"
           });
-          localStorage.setItem("allUsers", JSON.stringify(usersList));
-        } else if (role === "provider") {
-          const storedProviders = localStorage.getItem("allProviders");
-          const providersList = storedProviders ? JSON.parse(storedProviders) : defaultProviders;
-          providersList.unshift({
-            id: `p${Date.now()}`,
-            name: name,
-            category: "Pending", 
-            categoryId: "0",
-            rating: 0,
-            reviewCount: 0,
-            hourlyRate: 50,
-            experience: 0,
-            location: "Pending",
-            bio: "New service provider.",
-            skills: [],
-            availability: "offline",
-            verified: false,
-            avatar: name.substring(0, 2).toUpperCase(),
-            phone: `${countryCode} ${phoneNumber}`
-          });
-          localStorage.setItem("allProviders", JSON.stringify(providersList));
-        }
 
-        toast({ title: "Success", description: "Account created and verified successfully!" });
-        
-        setTimeout(() => {
-          if (role === "provider") {
-            navigate("/become-provider");
+          toast({ title: "Success", description: "Account created and verified successfully!" });
+          
+          setTimeout(() => {
+            if (role === "provider") {
+              navigate("/become-provider");
+            } else {
+              navigate("/");
+            }
+          }, 500);
+        } catch (err: any) {
+          const errorMessage = err.message || "Failed to create account in backend.";
+          // Handle specific Prisma errors for unique constraint (email already exists)
+          if (errorMessage.includes("Unique constraint failed")) {
+             toast({ title: "Error", description: "An account with this email already exists.", variant: "destructive" });
           } else {
-            navigate("/");
+             toast({ title: "Error", description: errorMessage, variant: "destructive" });
           }
-        }, 500);
+        }
       } else {
         toast({ title: "Invalid OTP", description: "The OTP you entered is incorrect.", variant: "destructive" });
       }

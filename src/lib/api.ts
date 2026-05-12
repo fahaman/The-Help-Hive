@@ -31,3 +31,46 @@ export const fetchReviews = async (): Promise<Review[]> => {
   if (!response.ok) throw new Error('Failed to fetch reviews');
   return response.json();
 };
+
+export const createProvider = async (data: Partial<Provider>): Promise<Provider> => {
+  const response = await fetch(`${API_URL}/providers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create provider');
+  return response.json();
+};
+
+export const updateProvider = async (id: string, data: Partial<Provider>): Promise<Provider> => {
+  const response = await fetch(`${API_URL}/providers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update provider');
+  return response.json();
+};
+
+export const deleteProvider = async (id: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/providers/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete provider');
+};
+
+export const createUser = async (data: Partial<AppUser>): Promise<AppUser> => {
+  const response = await fetch(`${API_URL}/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create user');
+  }
+  return response.json();
+};
+
+export const deleteUser = async (id: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete user');
+};

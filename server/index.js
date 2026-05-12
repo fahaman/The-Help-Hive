@@ -60,6 +60,68 @@ app.get('/api/reviews', async (req, res) => {
   }
 });
 
+// Mutation Routes
+
+app.post('/api/providers', async (req, res) => {
+  try {
+    const { skills, ...providerData } = req.body;
+    const provider = await prisma.provider.create({
+      data: {
+        ...providerData,
+        skills: JSON.stringify(skills || [])
+      }
+    });
+    res.json(provider);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/providers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hourlyRate } = req.body;
+    const provider = await prisma.provider.update({
+      where: { id },
+      data: { hourlyRate: Number(hourlyRate) }
+    });
+    res.json(provider);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/providers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.provider.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const user = await prisma.appUser.create({
+      data: req.body
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.appUser.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
