@@ -66,7 +66,8 @@ const Register = () => {
     return number.length === maxDigits && /^\d+$/.test(number);
   };
 
-  const handleSendOtp = () => {
+  // Handle Direct Registration without OTP Verification
+  const handleRegisterDirect = async () => {
     if (!validateName(name)) {
       toast({ title: "Invalid Name", description: "Name must contain only letters and spaces, minimum 2 characters.", variant: "destructive" });
       return;
@@ -87,77 +88,58 @@ const Register = () => {
       return;
     }
 
-    // Generate a random 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(otpCode);
-    
-    // Send to Vite dev server to log in terminal
-    fetch('/api/log-otp', {
-      method: 'POST',
-      body: JSON.stringify({ message: `Verification code for ${countryCode} ${phoneNumber} is: ${otpCode}` })
-    }).catch(() => {});
+    setIsVerifying(true);
+    // Save user data directly
+    localStorage.setItem("userRole", role);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userName", name);
+    localStorage.setItem("userPhone", `${countryCode} ${phoneNumber}`);
+    localStorage.setItem("joinedAt", new Date().toISOString().split('T')[0]);
 
-    setOtpSent(true);
-    setShowOtpDialog(true);
-    toast({ title: "OTP Sent", description: `[DEV] Your verification code is: ${otpCode}` });
+    try {
+      await createUserMut.mutateAsync({
+        id: `u${Date.now()}`,
+        name: name,
+        email: email,
+        role: role,
+        joinedAt: new Date().toISOString().split('T')[0],
+        status: "active"
+      });
+
+      toast({ title: "Success", description: "Account created successfully!" });
+      
+      setTimeout(() => {
+        if (role === "provider") {
+          navigate("/become-provider");
+        } else {
+          navigate("/");
+        }
+      }, 500);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create account in backend.";
+      if (errorMessage.includes("Unique constraint failed")) {
+         toast({ title: "Error", description: "An account with this email already exists.", variant: "destructive" });
+      } else {
+         toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  /* OTP Verification Logic Commented Out
+  const handleSendOtp = () => {
+    if (!validateName(name)) {
+      toast({ title: "Invalid Name", description: "Name must contain only letters and spaces, minimum 2 characters.", variant: "destructive" });
+      return;
+    }
+    // ...
   };
 
   const handleVerifyOtp = () => {
-    if (otp.length !== 6) {
-      toast({ title: "Invalid OTP", description: "Please enter a 6-digit OTP.", variant: "destructive" });
-      return;
-    }
-
-    setIsVerifying(true);
-
-    // Verify against generated OTP
-    setTimeout(async () => {
-      if (otp === generatedOtp) {
-        // Save user data
-        localStorage.setItem("userRole", role);
-        localStorage.setItem("userEmail", email);
-        localStorage.setItem("userName", name);
-        localStorage.setItem("userPhone", `${countryCode} ${phoneNumber}`);
-        localStorage.setItem("joinedAt", new Date().toISOString().split('T')[0]);
-
-        try {
-          // Both users and providers need an AppUser account to login
-          await createUserMut.mutateAsync({
-            id: `u${Date.now()}`,
-            name: name,
-            email: email,
-            role: role,
-            joinedAt: new Date().toISOString().split('T')[0],
-            status: "active"
-          });
-
-          toast({ title: "Success", description: "Account created and verified successfully!" });
-          
-          setTimeout(() => {
-            if (role === "provider") {
-              navigate("/become-provider");
-            } else {
-              navigate("/");
-            }
-          }, 500);
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : "Failed to create account in backend.";
-          // Handle specific Prisma errors for unique constraint (email already exists)
-          if (errorMessage.includes("Unique constraint failed")) {
-             toast({ title: "Error", description: "An account with this email already exists.", variant: "destructive" });
-          } else {
-             toast({ title: "Error", description: errorMessage, variant: "destructive" });
-          }
-        }
-      } else {
-        toast({ title: "Invalid OTP", description: "The OTP you entered is incorrect.", variant: "destructive" });
-      }
-      setIsVerifying(false);
-      if (otp === generatedOtp) {
-        setShowOtpDialog(false);
-      }
-    }, 1000);
+    // ...
   };
+  */
 
   const passwordStrength = {
     length: password.length >= 8,
@@ -175,7 +157,7 @@ const Register = () => {
               <h1 className="font-heading text-2xl font-bold text-foreground">Create Account</h1>
               <p className="mt-1 text-sm text-muted-foreground">Join The Help Hive today</p>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleRegisterDirect(); }} className="space-y-4">
               <div>
                 <Label htmlFor="name">Full Name</Label>
                 <Input
@@ -189,7 +171,7 @@ const Register = () => {
                 {name && !validateName(name) && (
                   <p className="text-sm text-red-500 mt-1">Name must contain only letters and spaces</p>
                 )}
-              </div>
+                </div>
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -287,8 +269,8 @@ const Register = () => {
                   </Select>
                 </div>
               )}
-              <Button type="submit" className="w-full" disabled={!validateName(name) || !email || !validatePassword(password) || !validatePhoneNumber(phoneNumber)}>
-                Send Verification Code
+              <Button type="submit" className="w-full" disabled={!validateName(name) || !email || !validatePassword(password) || !validatePhoneNumber(phoneNumber) || isVerifying}>
+                {isVerifying ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
             <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -298,40 +280,11 @@ const Register = () => {
           </div>
         </div>
 
-        {/* OTP Verification Dialog */}
+        {/* OTP Verification Dialog Commented Out
         <Dialog open={showOtpDialog} onOpenChange={setShowOtpDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Verify Your Phone Number</DialogTitle>
-              <DialogDescription>
-                We've sent a 6-digit verification code to {countryCode} {phoneNumber}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center space-y-4">
-              <InputOTP
-                value={otp}
-                onChange={setOtp}
-                maxLength={6}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
-              <Button
-                onClick={handleVerifyOtp}
-                disabled={otp.length !== 6 || isVerifying}
-                className="w-full"
-              >
-                {isVerifying ? "Verifying..." : "Verify & Create Account"}
-              </Button>
-            </div>
-          </DialogContent>
+           ...
         </Dialog>
+        */}
     </div>
   );
 };

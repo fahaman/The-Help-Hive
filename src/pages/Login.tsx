@@ -60,24 +60,20 @@ const Login = () => {
     }
 
     setIsResetting(true);
-    
-    // Generate a random 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(otpCode);
 
-    // Send to Vite dev server to log in terminal
-    fetch('/api/log-otp', {
-      method: 'POST',
-      body: JSON.stringify({ message: `Password reset code for ${resetEmail} is: ${otpCode}` })
-    }).catch(() => {});
-
-    // Mock network delay
+    // Skip OTP verification and proceed directly to new password step
     setTimeout(() => {
-      setResetStep("otp");
+      setResetStep("password");
       setIsResetting(false);
-      toast({ title: "OTP Sent", description: `[DEV] Your reset code is: ${otpCode}` });
-    }, 1000);
+      toast({ title: "Email Verified", description: "Please enter your new password." });
+    }, 500);
   };
+
+  /* OTP Verification step commented out
+  const handleVerifyResetOtp = () => {
+    // ...
+  };
+  */
 
   const handleVerifyResetOtp = () => {
     if (otp.length !== 6) {
