@@ -74,9 +74,16 @@ const Admin = () => {
       
       <div className="grid gap-6 md:grid-cols-2 mb-8">
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Users (Role Tracing)</CardTitle>
-            <CardDescription>Track all newly registered users and activity.</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0">
+            <div>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>Track and manage registered users.</CardDescription>
+            </div>
+            <Link to="/register">
+              <Button size="sm" className="gap-2 h-8">
+                <Plus className="h-4 w-4" /> Add User
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Review } from "@/lib/mock-data";
-import { useQuery } from "@tanstack/react-query";
-import { fetchReviews } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchReviews, createReview } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 const Reviews = () => {
+  const queryClient = useQueryClient();
   const { data: fetchedReviews } = useQuery({ queryKey: ['reviews'], queryFn: fetchReviews });
   const [reviews, setReviews] = useState<Review[]>([]);
   const [content, setContent] = useState("");
@@ -26,21 +27,21 @@ const Reviews = () => {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createReviewMut = useMutation({
+    mutationFn: createReview,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reviews'] })
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    const newReview: Review = {
-      id: `r${Date.now()}`,
-      userId: "u_self",
-      userName: "Current User",
+    await createReviewMut.mutateAsync({
       type,
       content,
-      date: new Date().toISOString().split("T")[0],
-      status: "pending",
-    };
+      userName: "Website User",
+    });
 
-    setReviews([newReview, ...reviews]);
     setContent("");
     toast({ title: "Submitted", description: "Your feedback has been submitted successfully." });
   };

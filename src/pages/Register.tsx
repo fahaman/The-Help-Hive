@@ -140,8 +140,8 @@ const Register = () => {
               navigate("/");
             }
           }, 500);
-        } catch (err: any) {
-          const errorMessage = err.message || "Failed to create account in backend.";
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "Failed to create account in backend.";
           // Handle specific Prisma errors for unique constraint (email already exists)
           if (errorMessage.includes("Unique constraint failed")) {
              toast({ title: "Error", description: "An account with this email already exists.", variant: "destructive" });

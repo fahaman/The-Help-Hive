@@ -6,7 +6,7 @@ import CategoryCard from "@/components/CategoryCard";
 import ProviderCard from "@/components/ProviderCard";
 import { Provider } from "@/lib/mock-data";
 import { useQuery } from "@tanstack/react-query";
-import { fetchCategories, fetchProviders } from "@/lib/api";
+import { fetchCategories, fetchProviders, fetchUsers } from "@/lib/api";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Index = () => {
@@ -20,6 +20,11 @@ const Index = () => {
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
   });
 
   useEffect(() => {
@@ -46,7 +51,7 @@ const Index = () => {
                   </Button>
                 </Link>
                 <Link to="/become-provider">
-                  <Button size="lg" variant="outline" className="border-warm-400 text-warm-100 hover:bg-warm-700">
+                  <Button size="lg" variant="outline" className="bg-transparent border-warm-400 text-warm-100 hover:bg-warm-700 hover:text-white">
                     Become a Provider
                   </Button>
                 </Link>
@@ -69,10 +74,10 @@ const Index = () => {
       <section className="border-b border-border bg-card py-12">
         <div className="container grid grid-cols-2 gap-6 md:grid-cols-4">
           {[
-            { value: "155+", label: "Verified Providers" },
-            { value: "2,400+", label: "Happy Customers" },
-            { value: "8", label: "Service Categories" },
-            { value: "4.8★", label: "Average Rating" },
+            { value: allProviders.length.toString(), label: "Verified Providers" },
+            { value: users.length.toString(), label: "Happy Customers" },
+            { value: categories.length.toString(), label: "Service Categories" },
+            { value: allProviders.length > 0 ? (allProviders.reduce((acc, p) => acc + (p.rating || 0), 0) / allProviders.length).toFixed(1) + "★" : "0★", label: "Average Rating" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="font-heading text-3xl font-bold text-foreground">{stat.value}</div>

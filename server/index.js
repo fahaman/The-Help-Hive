@@ -62,6 +62,33 @@ app.get('/api/reviews', async (req, res) => {
 
 // Mutation Routes
 
+app.post('/api/reviews', async (req, res) => {
+  try {
+    // Find any user to associate the review with, or create a guest if none exist
+    let user = await prisma.appUser.findFirst();
+    if (!user) {
+      user = await prisma.appUser.create({
+        data: { id: "guest", name: "Guest", email: "guest@example.com", role: "user", joinedAt: new Date().toISOString(), status: "active" }
+      });
+    }
+
+    const review = await prisma.review.create({
+      data: {
+        id: `r${Date.now()}`,
+        userId: user.id,
+        userName: req.body.userName || "Website User",
+        type: req.body.type,
+        content: req.body.content,
+        date: new Date().toISOString().split("T")[0],
+        status: "pending"
+      }
+    });
+    res.json(review);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/providers', async (req, res) => {
   try {
     const { skills, ...providerData } = req.body;

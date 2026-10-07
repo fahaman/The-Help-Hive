@@ -1,6 +1,6 @@
 import { Category, Provider, ServiceRequest, AppUser, Review } from './mock-data';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export const fetchCategories = async (): Promise<Category[]> => {
   const response = await fetch(`${API_URL}/categories`);
@@ -29,6 +29,16 @@ export const fetchUsers = async (): Promise<AppUser[]> => {
 export const fetchReviews = async (): Promise<Review[]> => {
   const response = await fetch(`${API_URL}/reviews`);
   if (!response.ok) throw new Error('Failed to fetch reviews');
+  return response.json();
+};
+
+export const createReview = async (data: Partial<Review>): Promise<Review> => {
+  const response = await fetch(`${API_URL}/reviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create review');
   return response.json();
 };
 
